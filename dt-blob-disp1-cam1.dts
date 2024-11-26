@@ -1820,7 +1820,8 @@
 
          pin_defines {
             pin_define@HDMI_CONTROL_ATTACHED {
-               type = "absent";
+               type = "external";
+               number = <0>;
             };
             pin_define@EMMC_ENABLE {
                type = "external";

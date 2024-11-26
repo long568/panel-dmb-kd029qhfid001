@@ -55,3 +55,4 @@ dkms.conf
 .DStore
 *.dtbo
 *.ko.xz
+*.bin
