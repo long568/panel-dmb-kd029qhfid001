@@ -1,0 +1,41 @@
+/dts-v1/;
+/plugin/;
+
+/{
+    reg_dsi_dummy: regulator-3v3 {
+        compatible = "regulator-fixed";
+        regulator-name = "reg_dsi_dummy";
+        regulator-min-microvolt = <3300000>;
+        regulator-max-microvolt = <3300000>;
+        regulator-always-on;
+    };
+
+    fragment@0 {
+        target = <&dsi1>;
+        __overlay__ {
+            status = "okay";
+            #address-cells = <1>;
+            #size-cells = <0>;
+
+            port {
+                mipi_out_panel: endpoint {
+                    remote-endpoint = <&mipi_in_panel>;
+                };
+            };
+
+            panel@0 {
+                compatible = "dmb,kd029qhfid001";
+                reg = <0>;
+                reset-gpios = <&gpio 4 0>;
+                VCC-supply = <&reg_dsi_dummy>;
+                IOVCC-supply = <&reg_dsi_dummy>;
+
+                port {
+                    mipi_in_panel: endpoint {
+                        remote-endpoint = <&mipi_out_panel>;
+                    };
+                };
+            };
+        };
+    };
+};
