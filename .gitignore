@@ -56,3 +56,4 @@ dkms.conf
 *.dtbo
 *.ko.xz
 *.bin
+*.log
