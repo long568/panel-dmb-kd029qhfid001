@@ -1,0 +1,296 @@
+NOTE:VCI=2.8-3.3V,IOVCC=1.8V,
+Display resolution:376*960
+params->vertical_sync_active=10
+params->vertical_backporch=30
+params->vertical_frontporch=60
+params->horizontal_sync_active=10
+params->horizontal_backporch=30
+params->horizontal_frontporch=56
+params->RGB.PLL_CLOCK=(30)M
+Frame Rate=60HZ
+//***************************************************************
+//--------------------initial code-----------------------------------------//
+void LCD_Init(void)
+{
+	RST=1;  
+	 delay(1)  //MS
+	RST=0;
+	 delay(10);//MS
+	RST=1;
+	 delay(120)//MS
+//*******************************/
+write_command(0xFF);
+write_data(0x77);
+write_data(0x01);
+write_data(0x00);
+write_data(0x00);
+write_data(0x13);
+
+write_command(0xEF);
+write_data(0x08);
+
+///*-------------------------------Bank0 Setting--------------------------------*/
+///*--------------------------Display Control setting---------------------------*/
+write_command(0xFF);
+write_data(0x77);
+write_data(0x01);
+write_data(0x00);
+write_data(0x00);
+write_data(0x10);
+
+write_command(0xC0);
+write_data(0x77);
+write_data(0x00);
+
+write_command(0xC1);
+write_data(0x0C);
+write_data(0x0C);
+
+write_command(0xC2);  //Inversion selection    
+write_data(0x27); //01 2-DOT 07-Column 
+write_data(0x0A);
+
+write_command(0xCC);
+write_data(0x10);
+////**********GAMMA SET***************//
+write_command(0xB0);
+write_data(0x00);
+write_data(0x0C);
+write_data(0x19);
+write_data(0x0B);
+write_data(0x0F);
+write_data(0x06);
+write_data(0x05);
+write_data(0x08);
+write_data(0x08);
+write_data(0x1F);
+write_data(0x04);
+write_data(0x11);
+write_data(0x0F);
+write_data(0x26);
+write_data(0x2F);
+write_data(0x1D);
+
+write_command(0xB1);
+write_data(0x00);
+write_data(0x17);
+write_data(0x19);
+write_data(0x0F);
+write_data(0x12);
+write_data(0x05);
+write_data(0x05);
+write_data(0x08);
+write_data(0x07);
+write_data(0x1F);
+write_data(0x03);
+write_data(0x10);
+write_data(0x10);
+write_data(0x27);
+write_data(0x2F);
+write_data(0x1D);
+///*-----------------------------End Gamma Setting------------------------------*/
+///*------------------------End Display Control setting-------------------------*/
+///*-----------------------------Bank0 Setting  End-----------------------------*/
+///*-------------------------------Bank1 Setting--------------------------------*/
+///*--------------------- Power Control Registers Initial ----------------------*/
+write_command(0xFF);
+write_data(0x77);
+write_data(0x01);
+write_data(0x00);
+write_data(0x00);
+write_data(0x11);
+
+write_command(0xB0);
+write_data(0x25);
+//*--------------------------------Vcom Setting--------------------------------
+write_command(0xB1);
+write_data(0x76);
+///*------------------------------End Vcom Setting------------------------------
+write_command(0xB2);//VGH   
+write_data(0x81);
+
+write_command(0xB3);
+write_data(0x80);
+
+write_command(0xB5);//VGL 
+write_data(0x49);
+
+write_command(0xB7);
+write_data(0x85);
+
+write_command(0xB8);//avdd  
+write_data(0x20);
+
+write_command(0xC1);
+write_data(0x78);
+
+write_command(0xC2);
+write_data(0x78);
+
+write_command(0xD0);
+write_data(0x88);
+//*--------------------End Power Control Registers Initial --------------------*/
+//********GIP SET********************///
+write_command(0xE0); 
+write_data(0x00);
+write_data(0x00);
+write_data(0x02);
+
+write_command(0xE1); 
+write_data(0x02);
+write_data(0x8C);
+write_data(0x04);
+write_data(0x8C);
+write_data(0x01);
+write_data(0x8C);
+write_data(0x03);
+write_data(0x8C);
+write_data(0x00);
+write_data(0x44);
+write_data(0x44);
+
+write_command(0xE2); 
+write_data(0x00);
+write_data(0x00);
+write_data(0x00);
+write_data(0x00);
+write_data(0x00);
+write_data(0x00);
+write_data(0x00);
+write_data(0x00);
+write_data(0x00);
+write_data(0x00);
+write_data(0x00);
+write_data(0x00);
+
+write_command(0xE3); 
+write_data(0x00);
+write_data(0x00);
+write_data(0x33);
+write_data(0x33);
+
+write_command(0xE4); 
+write_data(0x44);
+write_data(0x44);
+
+write_command(0xE5); 
+write_data(0x09);
+write_data(0xD2);
+write_data(0x35);
+write_data(0x8C);
+write_data(0x0B);
+write_data(0xD4);
+write_data(0x35);
+write_data(0x8C);
+write_data(0x05);
+write_data(0xCE);
+write_data(0x35);
+write_data(0x8C);
+write_data(0x07);
+write_data(0xD0);
+write_data(0x35);
+write_data(0x8C);
+
+write_command(0xE6);  
+write_data(0x00);
+write_data(0x00);
+write_data(0x33);
+write_data(0x33);
+
+write_command(0xE7); 
+write_data(0x44);
+write_data(0x44);
+
+write_command(0xE8); 
+write_data(0x08);
+write_data(0xD1);
+write_data(0x35);
+write_data(0x8C);
+write_data(0x0A);
+write_data(0xD3);
+write_data(0x35);
+write_data(0x8C);
+write_data(0x04);
+write_data(0xCD);
+write_data(0x35);
+write_data(0x8C);
+write_data(0x06);
+write_data(0xCF);
+write_data(0x35);
+write_data(0x8C);
+
+write_command(0xEB); 
+write_data(0x00);
+write_data(0x01);
+write_data(0xE4);
+write_data(0xE4);
+write_data(0x44);
+write_data(0x00);
+
+write_command(0xED);
+write_data(0x77);
+write_data(0x66);
+write_data(0x55);
+write_data(0x44);
+write_data(0xCA);
+write_data(0xF1);
+write_data(0x03);
+write_data(0xBF);
+write_data(0xFB);
+write_data(0x30);
+write_data(0x1F);
+write_data(0xAC);
+write_data(0x44);
+write_data(0x55);
+write_data(0x66);
+write_data(0x77);
+
+write_command(0xEF);
+write_data(0x10);
+write_data(0x0D);
+write_data(0x04);
+write_data(0x08);
+write_data(0x3F);
+write_data(0x1F);
+//***********AND GIP----------------------
+write_command(0xFF);
+write_data(0x77);
+write_data(0x01);
+write_data(0x00);
+write_data(0x00);
+write_data(0x00);
+
+write_command(0x3A);
+write_data(0x70);//24BIT RGB
+
+write_command(0x36);
+write_data(0x00);
+
+write_command(0x35);
+write_data(0x00); 
+
+write_command(0x11);//SLEEP OUT 
+delay(120);
+write_command(0x29);// ON
+
+
+}
+
+//*******************************************
+void EnterSleep (void)
+{
+    write_command(0x28);
+     delay(10);
+    write_command(0x10);
+  
+  }
+
+//*********************************************************
+void ExitSleep (void)
+
+ {
+    write_command(0x11);
+     delay(120);
+    write_command(0x29);
+
+   }

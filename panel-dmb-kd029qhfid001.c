@@ -320,7 +320,7 @@ static int st7701_prepare(struct drm_panel *panel)
     if (st7701->desc->gip_sequence)
         st7701->desc->gip_sequence(st7701);
 
-    ST7701_DSI(st7701, MIPI_DCS_EXIT_SLEEP_MODE);
+    mipi_dsi_dcs_exit_sleep_mode(st7701->dsi);
     msleep(150);
     printk(KERN_INFO "st7701_prepare -> done\n");
 
@@ -330,7 +330,7 @@ static int st7701_prepare(struct drm_panel *panel)
 static int st7701_enable(struct drm_panel *panel)
 {
     struct st7701 *st7701 = panel_to_st7701(panel);
-    ST7701_DSI(st7701, MIPI_DCS_SET_DISPLAY_ON);
+    mipi_dsi_dcs_set_display_on(st7701->dsi);
     printk(KERN_INFO "st7701_enable -> done\n");
     return 0;
 }
@@ -338,7 +338,7 @@ static int st7701_enable(struct drm_panel *panel)
 static int st7701_disable(struct drm_panel *panel)
 {
     struct st7701 *st7701 = panel_to_st7701(panel);
-    ST7701_DSI(st7701, MIPI_DCS_SET_DISPLAY_OFF);
+    mipi_dsi_dcs_set_display_off(st7701->dsi);
     msleep(20);
     printk(KERN_INFO "st7701_disable -> done\n");
     return 0;
@@ -348,7 +348,7 @@ static int st7701_unprepare(struct drm_panel *panel)
 {
     struct st7701 *st7701 = panel_to_st7701(panel);
 
-    ST7701_DSI(st7701, MIPI_DCS_ENTER_SLEEP_MODE);
+    mipi_dsi_dcs_enter_sleep_mode(st7701->dsi);
 
     msleep(st7701->sleep_delay);
 
@@ -367,6 +367,7 @@ static int st7701_unprepare(struct drm_panel *panel)
 
     regulator_bulk_disable(ARRAY_SIZE(st7701->supplies), st7701->supplies);
 
+    printk(KERN_INFO "st7701_unprepare -> done\n");
     return 0;
 }
 
@@ -535,7 +536,7 @@ static int st7701_dsi_probe(struct mipi_dsi_device *dsi)
     if (ret)
         return ret;
 
-    dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_LPM;
+    dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_BURST;// | MIPI_DSI_MODE_LPM;
     dsi->format = st7701->desc->format;
     dsi->lanes = st7701->desc->lanes;
 
