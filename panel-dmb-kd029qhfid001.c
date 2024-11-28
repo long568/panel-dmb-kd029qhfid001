@@ -22,7 +22,10 @@
 
 #include <linux/kernel.h>
 
-#define SPI_DATA_FLAG			0x100
+#define MCS_CMD_READ_ID1	0xDA
+#define MCS_CMD_READ_ID2	0xDB
+#define MCS_CMD_READ_ID3	0xDC
+#define MCS_CMD_READ_DID    0xA1
 
 /* Command2 BKx selection command */
 #define DSI_CMD2BKX_SEL			0xFF
@@ -126,13 +129,6 @@ enum op_bias {
 
 struct st7701;
 
-struct st7701;
-
-enum st7701_ctrl_if {
-    ST7701_CTRL_DSI,
-    ST7701_CTRL_SPI,
-};
-
 struct st7701_panel_desc {
     const struct drm_display_mode *mode;
     unsigned int lanes;
@@ -141,7 +137,6 @@ struct st7701_panel_desc {
     unsigned int panel_sleep_delay;
     void (*init_sequence)(struct st7701 *st7701);
     unsigned int conn_type;
-    enum st7701_ctrl_if interface;
     u32 bus_flags;
 
     /* TFT matrix driver configuration, panel specific. */
@@ -249,9 +244,71 @@ static void st7701_switch_cmd_bkx(struct st7701 *st7701, bool cmd2, u8 bkx)
         spi_sync((st7701)->spi, &spi);			\
     }
 
+static __maybe_unused void st7701_bist(struct st7701 *st7701)
+{
+    ST7701_DSI(st7701, 0xFF,0x77,0x01,0x00,0x00,0x12);
+    ST7701_DSI(st7701, 0xD1,0x81);
+    ST7701_DSI(st7701, 0xD2,0x08);
+}
+
+static int kd029qhfid001_read_id(struct mipi_dsi_device *dsi)
+{
+	u8 id1, id2, id3;
+	int ret;
+
+	ret = mipi_dsi_dcs_read(dsi, MCS_CMD_READ_ID1, &id1, 1);
+	if (ret < 0) {
+		printk(KERN_INFO "[kd029qhfid001] could not read MTP ID1\n");
+		return ret;
+	}
+	ret = mipi_dsi_dcs_read(dsi, MCS_CMD_READ_ID2, &id2, 1);
+	if (ret < 0) {
+		printk(KERN_INFO "[kd029qhfid001] could not read MTP ID2\n");
+		return ret;
+	}
+	ret = mipi_dsi_dcs_read(dsi, MCS_CMD_READ_ID3, &id3, 1);
+	if (ret < 0) {
+		printk(KERN_INFO "[kd029qhfid001] could not read MTP ID3\n");
+		return ret;
+	}
+
+	/*
+	 * Multi-Time Programmable (?) memory contains manufacturer
+	 * ID (e.g. Hydis 0x55), driver ID (e.g. NT35510 0xc0) and
+	 * version.
+	 */
+	printk(KERN_INFO "[kd029qhfid001] MTP ID manufacturer: %02x version: %02x driver: %02x\n", id1, id2, id3);
+
+	return 0;
+}
+
+static int kd029qhfid001_read_did(struct mipi_dsi_device *dsi)
+{
+	u8 did[2];
+	int ret;
+
+	ret = mipi_dsi_dcs_read(dsi, MCS_CMD_READ_DID, &did, 2);
+	if (ret < 0) {
+		printk(KERN_INFO "[kd029qhfid001] could not read DID\n");
+		return ret;
+	}
+
+	/*
+	 * Multi-Time Programmable (?) memory contains manufacturer
+	 * ID (e.g. Hydis 0x55), driver ID (e.g. NT35510 0xc0) and
+	 * version.
+	 */
+	printk(KERN_INFO "[kd029qhfid001] MTP Display ID: %02x %02x\n", did[0], did[1]);
+
+	return 0;
+}
+
 static void kd029qhfid001_init_sequence(struct st7701 *st7701)
 {
     const struct st7701_panel_desc *desc = st7701->desc;
+
+    kd029qhfid001_read_id(st7701->dsi);
+    kd029qhfid001_read_did(st7701->dsi);
 
     st7701_switch_cmd_bkx(st7701, true, 3);
     ST7701_DSI(st7701, 0xEF, 0x08);
@@ -303,6 +360,9 @@ static int st7701_prepare(struct drm_panel *panel)
     struct st7701 *st7701 = panel_to_st7701(panel);
     int ret;
 
+    gpiod_set_value(st7701->reset, 1);
+    msleep(10);
+
     gpiod_set_value(st7701->reset, 0);
 
     ret = regulator_bulk_enable(ARRAY_SIZE(st7701->supplies),
@@ -312,7 +372,7 @@ static int st7701_prepare(struct drm_panel *panel)
     msleep(20);
 
     gpiod_set_value(st7701->reset, 1);
-    msleep(150);
+    msleep(st7701->sleep_delay);
     printk(KERN_INFO "st7701_prepare -> reset -> done\n");
 
     st7701->desc->init_sequence(st7701);
@@ -321,26 +381,21 @@ static int st7701_prepare(struct drm_panel *panel)
         st7701->desc->gip_sequence(st7701);
 
     mipi_dsi_dcs_exit_sleep_mode(st7701->dsi);
-    msleep(150);
+    msleep(st7701->sleep_delay);
+    mipi_dsi_dcs_set_display_on(st7701->dsi);
+    msleep(20);
+    
     printk(KERN_INFO "st7701_prepare -> done\n");
-
     return 0;
 }
 
 static int st7701_enable(struct drm_panel *panel)
 {
-    struct st7701 *st7701 = panel_to_st7701(panel);
-    mipi_dsi_dcs_set_display_on(st7701->dsi);
-    printk(KERN_INFO "st7701_enable -> done\n");
     return 0;
 }
 
 static int st7701_disable(struct drm_panel *panel)
 {
-    struct st7701 *st7701 = panel_to_st7701(panel);
-    mipi_dsi_dcs_set_display_off(st7701->dsi);
-    msleep(20);
-    printk(KERN_INFO "st7701_disable -> done\n");
     return 0;
 }
 
@@ -348,6 +403,8 @@ static int st7701_unprepare(struct drm_panel *panel)
 {
     struct st7701 *st7701 = panel_to_st7701(panel);
 
+    mipi_dsi_dcs_set_display_off(st7701->dsi);
+    msleep(20);
     mipi_dsi_dcs_enter_sleep_mode(st7701->dsi);
 
     msleep(st7701->sleep_delay);
@@ -449,10 +506,10 @@ static const struct st7701_panel_desc kd029qhfid001_desc = {
     .mode = &kd029qhfid001_mode,
     .lanes = 2,
     .format = MIPI_DSI_FMT_RGB888,
-    .panel_sleep_delay = 80,
+    .mediabus_format = MEDIA_BUS_FMT_RGB888_1X24,
+    .panel_sleep_delay = 30,
     .init_sequence = kd029qhfid001_init_sequence,
     .conn_type = DRM_MODE_CONNECTOR_DSI,
-    .interface = ST7701_CTRL_DSI,
     .pv_gamma = {
         0x00, 0x0C, 0x19, 0x0B,
         0x0F, 0x06, 0x05, 0x08,
@@ -536,7 +593,9 @@ static int st7701_dsi_probe(struct mipi_dsi_device *dsi)
     if (ret)
         return ret;
 
-    dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_VIDEO_BURST;// | MIPI_DSI_MODE_LPM;
+    dsi->hs_rate = 360000000;
+	dsi->lp_rate = 9600000;
+    dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_LPM | MIPI_DSI_CLOCK_NON_CONTINUOUS;
     dsi->format = st7701->desc->format;
     dsi->lanes = st7701->desc->lanes;
 
