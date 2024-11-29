@@ -24,6 +24,7 @@
             mipi_panel: panel@0 {
                 compatible = "dmb,kd029qhfid001";
                 reg = <0>;
+                rotation = <0>;
                 reset-gpios = <&gpio 4 0>;
                 VCC-supply = <&dsi_dummy_reg>;
                 IOVCC-supply = <&dsi_dummy_reg>;
@@ -38,6 +39,7 @@
     };
 
     __overrides__ {
-        reset-gpio = <&mipi_panel>, "reset-gpios:4";
+        reset = <&mipi_panel>,"reset-gpios:4";
+        r = <&mipi_panel>,"rotation:0";
 	};
 };
