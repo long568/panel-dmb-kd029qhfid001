@@ -2,13 +2,11 @@
 /plugin/;
 
 /{
-    reg_dsi_dummy: regulator-3v3 {
-        compatible = "regulator-fixed";
-        regulator-name = "reg_dsi_dummy";
-        regulator-min-microvolt = <3300000>;
-        regulator-max-microvolt = <3300000>;
-        regulator-always-on;
-    };
+    dsi_dummy_reg: dsi_dummy_reg {
+		compatible = "regulator-fixed";
+		regulator-name = "dsi_dummy_reg";
+		status = "okay";
+	};
 
     fragment@0 {
         target = <&dsi1>;
@@ -27,8 +25,8 @@
                 compatible = "dmb,kd029qhfid001";
                 reg = <0>;
                 reset-gpios = <&gpio 4 0>;
-                VCC-supply = <&reg_dsi_dummy>;
-                IOVCC-supply = <&reg_dsi_dummy>;
+                VCC-supply = <&dsi_dummy_reg>;
+                IOVCC-supply = <&dsi_dummy_reg>;
 
                 port {
                     mipi_in_panel: endpoint {
