@@ -38,7 +38,6 @@
     };
 
     __overrides__ {
-        rst-44 = <&mipi_panel>, "reset-gpios:0", <&gpio 44 0>;
-        rst-45 = <&mipi_panel>, "reset-gpios:0", <&gpio 45 0>;
+        reset-gpio = <&mipi_panel>, "reset-gpios:4";
 	};
 };
