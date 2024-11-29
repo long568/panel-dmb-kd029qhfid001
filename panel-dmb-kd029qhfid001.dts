@@ -21,7 +21,7 @@
                 };
             };
 
-            panel@0 {
+            mipi_panel: panel@0 {
                 compatible = "dmb,kd029qhfid001";
                 reg = <0>;
                 reset-gpios = <&gpio 4 0>;
@@ -36,4 +36,9 @@
             };
         };
     };
+
+    __overrides__ {
+        rst-44 = <&mipi_panel>, "reset-gpios:0", <&gpio 44 0>;
+        rst-45 = <&mipi_panel>, "reset-gpios:0", <&gpio 45 0>;
+	};
 };
