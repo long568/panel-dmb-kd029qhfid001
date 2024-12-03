@@ -251,24 +251,24 @@ static __maybe_unused void st7701_bist(struct st7701 *st7701)
     ST7701_DSI(st7701, 0xD2,0x08);
 }
 
-static int kd029qhfid001_read_id(struct mipi_dsi_device *dsi)
+static int st7701_read_id(struct mipi_dsi_device *dsi)
 {
 	u8 id1, id2, id3;
 	int ret;
 
 	ret = mipi_dsi_dcs_read(dsi, MCS_CMD_READ_ID1, &id1, 1);
 	if (ret < 0) {
-		printk(KERN_INFO "[kd029qhfid001] could not read MTP ID1\n");
+		printk(KERN_INFO "[st7701] could not read MTP ID1\n");
 		return ret;
 	}
 	ret = mipi_dsi_dcs_read(dsi, MCS_CMD_READ_ID2, &id2, 1);
 	if (ret < 0) {
-		printk(KERN_INFO "[kd029qhfid001] could not read MTP ID2\n");
+		printk(KERN_INFO "[st7701] could not read MTP ID2\n");
 		return ret;
 	}
 	ret = mipi_dsi_dcs_read(dsi, MCS_CMD_READ_ID3, &id3, 1);
 	if (ret < 0) {
-		printk(KERN_INFO "[kd029qhfid001] could not read MTP ID3\n");
+		printk(KERN_INFO "[st7701] could not read MTP ID3\n");
 		return ret;
 	}
 
@@ -277,19 +277,19 @@ static int kd029qhfid001_read_id(struct mipi_dsi_device *dsi)
 	 * ID (e.g. Hydis 0x55), driver ID (e.g. NT35510 0xc0) and
 	 * version.
 	 */
-	printk(KERN_INFO "[kd029qhfid001] MTP ID manufacturer: %02x version: %02x driver: %02x\n", id1, id2, id3);
+	printk(KERN_INFO "[st7701] MTP ID manufacturer: %02x version: %02x driver: %02x\n", id1, id2, id3);
 
 	return 0;
 }
 
-static int kd029qhfid001_read_did(struct mipi_dsi_device *dsi)
+static int st7701_read_did(struct mipi_dsi_device *dsi)
 {
 	u8 did[2];
 	int ret;
 
 	ret = mipi_dsi_dcs_read(dsi, MCS_CMD_READ_DID, &did, 2);
 	if (ret < 0) {
-		printk(KERN_INFO "[kd029qhfid001] could not read DID\n");
+		printk(KERN_INFO "[st7701] could not read DID\n");
 		return ret;
 	}
 
@@ -298,7 +298,7 @@ static int kd029qhfid001_read_did(struct mipi_dsi_device *dsi)
 	 * ID (e.g. Hydis 0x55), driver ID (e.g. NT35510 0xc0) and
 	 * version.
 	 */
-	printk(KERN_INFO "[kd029qhfid001] MTP Display ID: %02x %02x\n", did[0], did[1]);
+	printk(KERN_INFO "[st7701] MTP Display ID: %02x %02x\n", did[0], did[1]);
 
 	return 0;
 }
@@ -307,8 +307,8 @@ static void kd029qhfid001_init_sequence(struct st7701 *st7701)
 {
     const struct st7701_panel_desc *desc = st7701->desc;
 
-    kd029qhfid001_read_id(st7701->dsi);
-    kd029qhfid001_read_did(st7701->dsi);
+    st7701_read_id(st7701->dsi);
+    st7701_read_did(st7701->dsi);
 
     st7701_switch_cmd_bkx(st7701, true, 3);
     ST7701_DSI(st7701, 0xEF, 0x08);
@@ -583,6 +583,41 @@ static int st7701_probe(struct device *dev, struct st7701 **ret_st7701)
     return 0;
 }
 
+static unsigned long st7701_cal_hs_rate(struct st7701 *st7701)
+{
+    int bit_n, lanes;
+    unsigned long point_n, data_n, data_n_per_sec, hs_rate;
+
+    const struct st7701_panel_desc *desc = st7701->desc;
+    const struct drm_display_mode *mode = desc->mode;
+    
+    switch(desc->format) {
+        case MIPI_DSI_FMT_RGB888:
+            bit_n = 24;
+            break;
+        case MIPI_DSI_FMT_RGB666:
+            bit_n = 24;
+            break;
+        case MIPI_DSI_FMT_RGB666_PACKED:
+            bit_n = 18;
+            break;
+        case MIPI_DSI_FMT_RGB565:
+            bit_n = 16;
+            break;
+        default:
+            dev_err(&st7701->dsi->dev, "st7701_cal_hs_rate: Invalid Color Format\n");
+            return 0;
+    }
+    lanes = desc->lanes;
+    
+    point_n = mode->htotal * mode->vtotal;
+    data_n = point_n * bit_n;
+    data_n_per_sec = data_n * 60;
+    hs_rate = data_n_per_sec / lanes;
+
+    return hs_rate;
+}
+
 static int st7701_dsi_probe(struct mipi_dsi_device *dsi)
 {
     struct st7701 *st7701;
@@ -593,7 +628,11 @@ static int st7701_dsi_probe(struct mipi_dsi_device *dsi)
     if (ret)
         return ret;
 
-    dsi->hs_rate = 360000000;
+    ret = of_drm_get_panel_orientation(dsi->dev.of_node, &st7701->orientation);
+    if (ret < 0)
+        return dev_err_probe(&dsi->dev, ret, "Failed to get orientation\n");
+
+    dsi->hs_rate = st7701_cal_hs_rate(st7701);
 	dsi->lp_rate = 9600000;
     dsi->mode_flags = MIPI_DSI_MODE_VIDEO | MIPI_DSI_MODE_LPM | MIPI_DSI_CLOCK_NON_CONTINUOUS;
     dsi->format = st7701->desc->format;
@@ -605,10 +644,6 @@ static int st7701_dsi_probe(struct mipi_dsi_device *dsi)
     ret = mipi_dsi_attach(dsi);
     if (ret)
         goto err_attach;
-
-    ret = of_drm_get_panel_orientation(dsi->dev.of_node, &st7701->orientation);
-    if (ret < 0)
-        return dev_err_probe(&dsi->dev, ret, "Failed to get orientation\n");
 
     return 0;
 
